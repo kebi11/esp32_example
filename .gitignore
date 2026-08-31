@@ -1,0 +1,13 @@
+build/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+managed_components/
+
+.vscode/settings.json
+.vscode/launch.json
+.vscode/ipch/
+*.code-workspace
+
+# 个人 Wi-Fi 凭据若落到本地文件，不要提交
+secrets.h

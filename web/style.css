@@ -1,0 +1,97 @@
+:root {
+    --bg: #0f1115;
+    --card: #181c23;
+    --text: #e6e8eb;
+    --muted: #8b95a3;
+    --accent: #4da3ff;
+    --ok: #3ddc84;
+    --err: #ff6b6b;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 16px;
+    max-width: 640px;
+    margin-inline: auto;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 15px;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+h1 {
+    font-size: 20px;
+    margin: 0;
+}
+
+h2 {
+    font-size: 15px;
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.badge {
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    background: #2a2f39;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.badge.online {
+    background: rgba(61, 220, 132, 0.15);
+    color: var(--ok);
+}
+
+.badge.offline {
+    background: rgba(255, 107, 107, 0.15);
+    color: var(--err);
+}
+
+.card {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 6px 0;
+    text-align: left;
+    font-weight: 400;
+}
+
+th {
+    width: 40%;
+    color: var(--muted);
+}
+
+td {
+    font-variant-numeric: tabular-nums;
+}
+
+footer {
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+}

@@ -1,0 +1,13 @@
+idf_component_register(
+    SRCS
+        "app_main.c"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        app_config
+        wifi_manager
+        gnss
+        web_server
+        storage
+        system_monitor
+)

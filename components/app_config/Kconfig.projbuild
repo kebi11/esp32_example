@@ -1,0 +1,34 @@
+menu "Application Configuration"
+
+    config APP_DEVICE_NAME
+        string "Device name"
+        default "esp32s3-gnss-01"
+        help
+            Device name reported by /api/status.
+
+    config APP_WIFI_SSID
+        string "Default Wi-Fi SSID"
+        default ""
+        help
+            Compiled-in fallback SSID. Runtime value stored in NVS takes priority.
+            Leave empty and provision via AP mode to avoid committing credentials.
+
+    config APP_WIFI_PASSWORD
+        string "Default Wi-Fi password"
+        default ""
+        help
+            Compiled-in fallback password. Runtime value stored in NVS takes priority.
+
+    config APP_WIFI_RETRY_MAX
+        int "Wi-Fi connect retry limit"
+        range 1 100
+        default 10
+        help
+            Number of STA reconnect attempts before giving up (and falling back to AP).
+
+    config APP_WEB_SERVER_PORT
+        int "HTTP server port"
+        range 1 65535
+        default 80
+
+endmenu

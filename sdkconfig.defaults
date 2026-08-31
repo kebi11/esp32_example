@@ -1,0 +1,15 @@
+# 目标芯片
+CONFIG_IDF_TARGET="esp32s3"
+
+# FreeRTOS 节拍，1ms tick 便于 vTaskDelay(pdMS_TO_TICKS(x))
+CONFIG_FREERTOS_HZ=1000
+
+# 日志默认等级：Info
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# NVS / 分区
+CONFIG_NVS_ENCRYPTION=n
+
+# 任务看门狗（Phase 9 网络可靠性时使用）
+CONFIG_ESP_TASK_WDT_EN=y
+CONFIG_ESP_TASK_WDT_PANIC=n

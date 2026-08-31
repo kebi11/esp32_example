@@ -1,0 +1,38 @@
+menu "GNSS Configuration"
+
+    config GNSS_UART_NUM
+        int "GNSS UART port number"
+        range 0 2
+        default 1
+        help
+            UART peripheral used to talk to the GNSS module.
+
+    config GNSS_UART_BAUDRATE
+        int "GNSS UART baud rate"
+        default 9600
+        help
+            SkyTraq S1216F8-BD ships at 9600 by default.
+
+    config GNSS_UART_RX_GPIO
+        int "GNSS UART RX GPIO"
+        default 18
+        help
+            ESP32-S3 RX pin, connect to GNSS TXD.
+
+    config GNSS_UART_TX_GPIO
+        int "GNSS UART TX GPIO"
+        default 17
+        help
+            ESP32-S3 TX pin, connect to GNSS RXD. Only needed when configuring the module.
+
+    config GNSS_TASK_STACK_SIZE
+        int "GNSS task stack size"
+        range 2048 16384
+        default 4096
+
+    config GNSS_TASK_PRIORITY
+        int "GNSS task priority"
+        range 1 24
+        default 5
+
+endmenu

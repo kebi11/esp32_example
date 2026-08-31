@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32-S3 GNSS Terminal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>ESP32-S3 GNSS Terminal</h1>
+        <span id="conn-state" class="badge">连接中...</span>
+    </header>
+
+    <section class="card">
+        <h2>设备状态</h2>
+        <table>
+            <tbody>
+                <tr><th>设备名</th><td id="device">--</td></tr>
+                <tr><th>IP</th><td id="ip">--</td></tr>
+                <tr><th>Wi-Fi RSSI</th><td id="rssi">--</td></tr>
+                <tr><th>运行时间</th><td id="uptime">--</td></tr>
+                <tr><th>剩余内存</th><td id="heap">--</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="card">
+        <h2>GNSS</h2>
+        <table>
+            <tbody>
+                <tr><th>定位状态</th><td id="fix">--</td></tr>
+                <tr><th>卫星数量</th><td id="satellites">--</td></tr>
+                <tr><th>纬度</th><td id="lat">--</td></tr>
+                <tr><th>经度</th><td id="lon">--</td></tr>
+                <tr><th>海拔</th><td id="alt">--</td></tr>
+                <tr><th>速度</th><td id="speed">--</td></tr>
+                <tr><th>UTC</th><td id="utc">--</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <footer>每 1 秒轮询 /api/status 与 /api/gnss</footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

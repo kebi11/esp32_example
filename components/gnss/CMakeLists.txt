@@ -1,0 +1,10 @@
+idf_component_register(
+    SRCS
+        "gnss.c"
+        "nmea_parser.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        app_config
+        driver
+)
