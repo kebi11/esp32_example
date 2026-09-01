@@ -16,7 +16,7 @@ GNSS（Phase 1+2）与 Wi-Fi STA（Phase 3）已实现，其余模块仍是占�
 | 0 | 工程骨架 / Hello World 日志 | 已完成 |
 | 1 | GNSS UART 原始数据 | 已完成（实测 115200 波特率，串口输出 `$GNRMC`） |
 | 2 | NMEA Parser（GGA / RMC） | 已实现（RMC 解析 + mutex 快照 + 每秒摘要日志），待上板验证 |
-| 3 | Wi-Fi STA | 已完成（实测连上手机热点，RSSI -17，IP 192.168.168.105） |
+| 3 | Wi-Fi STA | 已完成（实测连上手机热点，RSSI -17，IP） |
 | 4 | HTTP Server | 已实现（esp_http_server，端口 80），待上板验证 |
 | 5 | REST API `/api/status`、`/api/gnss` | 已实现（含 `/api/device` 汇总），待上板验证 |
 | 6 | Web Dashboard | 已实现（前端三件套嵌入固件 + `/` 根路由），待上板验证 |
