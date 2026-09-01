@@ -8,19 +8,19 @@ GNSS → UART → ESP32-S3 → Wi-Fi → HTTP → Browser
 
 ## 当前状态
 
-**骨架阶段（Skeleton）** —— 目录结构、CMake 组织、Kconfig 配置项、模块 API 边界已就位，
-各模块内部实现均为占位（stub），日志会输出 `not ready`。
+目录结构、CMake 组织、Kconfig 配置项、模块 API 边界已就位。
+GNSS（Phase 1+2）与 Wi-Fi STA（Phase 3）已实现，其余模块仍是占位 stub。
 
 | Phase | 内容 | 状态 |
 |---|---|---|
-| 0 | 工程骨架 / Hello World 日志 | 骨架已完成，待编译验证 |
-| 1 | GNSS UART 原始数据 | 未实现 |
-| 2 | NMEA Parser（GGA / RMC） | 未实现 |
-| 3 | Wi-Fi STA | 未实现 |
-| 4 | HTTP Server | 未实现 |
-| 5 | REST API `/api/status`、`/api/gnss` | 未实现 |
-| 6 | Web Dashboard | 前端文件已写，待接入 |
-| 7 | NVS 存储 Wi-Fi 凭据 | 未实现 |
+| 0 | 工程骨架 / Hello World 日志 | 已完成 |
+| 1 | GNSS UART 原始数据 | 已完成（实测 115200 波特率，串口输出 `$GNRMC`） |
+| 2 | NMEA Parser（GGA / RMC） | 已实现（RMC 解析 + mutex 快照 + 每秒摘要日志），待上板验证 |
+| 3 | Wi-Fi STA | 已完成（实测连上手机热点，RSSI -17，IP 192.168.168.105） |
+| 4 | HTTP Server | 已实现（esp_http_server，端口 80），待上板验证 |
+| 5 | REST API `/api/status`、`/api/gnss` | 已实现（含 `/api/device` 汇总），待上板验证 |
+| 6 | Web Dashboard | 已实现（前端三件套嵌入固件 + `/` 根路由），待上板验证 |
+| 7 | NVS 存储 Wi-Fi 凭据 | 已实现（因 Wi-Fi 依赖 NVS 提前完成） |
 | 8 | AP 配网 | 未实现 |
 | 9 | 网络可靠性 / 看门狗 | 未实现 |
 
@@ -58,7 +58,7 @@ idf.py menuconfig
 | `APP_WIFI_RETRY_MAX` | 10 | STA 最大重试次数 |
 | `APP_WEB_SERVER_PORT` | 80 | HTTP 端口 |
 | `GNSS_UART_NUM` | 1 | UART 端口号 |
-| `GNSS_UART_BAUDRATE` | 9600 | 波特率 |
+| `GNSS_UART_BAUDRATE` | 115200 | 波特率（本模块实测值，见 docs/hardware.md） |
 | `GNSS_UART_RX_GPIO` | 18 | ESP32 RX ← GNSS TXD |
 | `GNSS_UART_TX_GPIO` | 17 | ESP32 TX → GNSS RXD |
 

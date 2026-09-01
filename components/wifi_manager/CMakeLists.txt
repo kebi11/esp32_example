@@ -8,4 +8,5 @@ idf_component_register(
         storage
         esp_wifi
         esp_netif
+        esp_event
 )

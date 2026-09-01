@@ -6,5 +6,6 @@ idf_component_register(
         "include"
     REQUIRES
         app_config
-        driver
+        esp_driver_uart
+        esp_timer
 )

@@ -59,7 +59,7 @@ extern "C" {
 #endif
 
 #ifndef CONFIG_GNSS_UART_BAUDRATE
-#define CONFIG_GNSS_UART_BAUDRATE 9600
+#define CONFIG_GNSS_UART_BAUDRATE 115200
 #endif
 
 #ifndef CONFIG_GNSS_UART_RX_GPIO
@@ -80,7 +80,7 @@ extern "C" {
 
 /** GNSS 使用的 UART 端口（UART_NUM_0/1/2） */
 #define GNSS_UART_NUM         CONFIG_GNSS_UART_NUM
-/** GNSS 波特率，S1216F8-BD 默认 9600 */
+/** GNSS 波特率，本模块实测 115200（出厂并非 9600） */
 #define GNSS_UART_BAUDRATE    CONFIG_GNSS_UART_BAUDRATE
 /** ESP32 接收脚，接 GNSS TXD */
 #define GNSS_UART_RX_GPIO     CONFIG_GNSS_UART_RX_GPIO

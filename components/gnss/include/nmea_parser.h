@@ -2,9 +2,12 @@
  * @file nmea_parser.h
  * @brief NMEA-0183 解析器。
  *
- * 第一版只处理 GGA 与 RMC：
+ * 支持处理 GGA 与 RMC：
  *   - GGA：经纬度、定位质量、卫星数量、海拔
  *   - RMC：UTC 时间、日期、经纬度、地面速度、定位有效状态
+ *
+ * 注意：本项目所用 S1216F8-BD 默认只输出 RMC（20 Hz），
+ * GGA 解析已实现但当前数据流中不会出现，卫星数/海拔保持 0。
  */
 
 #pragma once

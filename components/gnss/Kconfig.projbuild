@@ -9,9 +9,10 @@ menu "GNSS Configuration"
 
     config GNSS_UART_BAUDRATE
         int "GNSS UART baud rate"
-        default 9600
+        default 115200
         help
-            SkyTraq S1216F8-BD ships at 9600 by default.
+            Measured value for this S1216F8-BD unit: it outputs $GNRMC at
+            20 Hz / 115200 8N1, not the 9600 datasheet default.
 
     config GNSS_UART_RX_GPIO
         int "GNSS UART RX GPIO"
