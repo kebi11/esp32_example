@@ -71,6 +71,36 @@
 
 返回 Web Dashboard（`web/index.html`），Phase 6 接入。
 
+## GET /api/track
+
+返回最近记录的轨迹点（RAM 环形缓冲，1 Hz 降采样，最多 512 点，断电不保留）。
+
+```json
+{
+  "track": [
+    { "lat": 31.2304, "lon": 121.4737, "t": 123 }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `track` | array | 轨迹点数组，从旧到新 |
+| `track[].lat` | double | 纬度 |
+| `track[].lon` | double | 经度 |
+| `track[].t` | int | 记录时刻的上电秒数 |
+
+## GET /api/events
+
+SSE 实时推送（`text/event-stream`），每秒推送一次，单客户端。
+
+```text
+data: {"status":{...},"gnss":{...}}
+
+```
+
+`status` 同 `/api/status`，`gnss` 同 `/api/gnss`。客户端断开后服务端自动结束连接。
+
 ## POST /api/wifi
 
 AP 配网：接收新凭据，保存到 NVS 并切回 STA 重连（Phase 8）。

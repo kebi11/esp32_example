@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESP32-S3 GNSS Terminal</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
     <header>
@@ -40,6 +43,12 @@
         </table>
     </section>
 
+    <section class="card">
+        <h2>地图</h2>
+        <div id="map"></div>
+        <p id="map-hint" class="hint">定位后显示当前位置与轨迹（需联网加载地图）。</p>
+    </section>
+
     <section class="card" id="wifi-config" hidden>
         <h2>Wi-Fi 设置</h2>
         <p class="hint">当前未连接网络，输入 Wi-Fi 名称和密码保存后自动连接。</p>
@@ -51,8 +60,9 @@
         <div id="wifi-msg" class="hint"></div>
     </section>
 
-    <footer>每 1 秒轮询 /api/status 与 /api/gnss</footer>
+    <footer>SSE 实时推送</footer>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -9,6 +9,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "esp_err.h"
 
@@ -20,7 +21,7 @@ extern "C" {
  * @brief 定位快照。
  *
  * 由 gnss_task 写入，由 web_server 等消费者通过 gnss_get_latest() 读取。
- * 第一版使用 mutex 保护（见 gnss.c）。
+ * 使用 mutex 保护（见 gnss.c）。
  */
 typedef struct {
     bool fix_valid;      /**< 定位是否有效 */
@@ -36,6 +37,16 @@ typedef struct {
     int minute;          /**< UTC 分 */
     int second;          /**< UTC 秒 */
 } gnss_data_t;
+
+/** 轨迹环形缓冲最大点数 */
+#define GNSS_TRACK_MAX 512
+
+/** 单个轨迹点 */
+typedef struct {
+    double latitude;   /**< 纬度，十进制度 */
+    double longitude;  /**< 经度，十进制度 */
+    uint32_t uptime_s; /**< 记录时刻的上电秒数 */
+} gnss_track_point_t;
 
 /**
  * @brief 配置并初始化 GNSS 使用的 UART。
@@ -56,6 +67,16 @@ esp_err_t gnss_start(void);
  * @return ESP_OK 成功；ESP_ERR_INVALID_ARG 参数为 NULL。
  */
 esp_err_t gnss_get_latest(gnss_data_t *out);
+
+/**
+ * @brief 获取最近记录的轨迹点（从旧到新）。
+ *
+ * @param[out] out     输出缓冲，容量 max_points 个点，不可为 NULL。
+ * @param max_points   缓冲最多能容纳的点数。
+ * @param[out] count   实际返回的点数，不可为 NULL。
+ * @return ESP_OK 成功；ESP_ERR_INVALID_ARG 参数为 NULL。
+ */
+esp_err_t gnss_get_track(gnss_track_point_t *out, int max_points, int *count);
 
 #ifdef __cplusplus
 }

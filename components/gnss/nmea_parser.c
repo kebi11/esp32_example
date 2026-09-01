@@ -12,10 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "esp_log.h"
-
-static const char *TAG = "NMEA";
-
 /** 单条语句最多的逗号分隔字段数（RMC 最多约 13 个，留余量） */
 #define NMEA_MAX_FIELDS 16
 

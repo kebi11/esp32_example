@@ -140,3 +140,14 @@ footer {
 #wifi-msg {
     margin: 10px 0 0;
 }
+
+#map {
+    height: 300px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0f1115;
+}
+
+#map-hint {
+    margin: 8px 0 0;
+}

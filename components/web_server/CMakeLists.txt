@@ -14,4 +14,7 @@ idf_component_register(
         "../../web/index.html"
         "../../web/style.css"
         "../../web/app.js"
+        "../../web/manifest.json"
+        "../../web/sw.js"
+        "../../web/icon.svg"
 )
