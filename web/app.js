@@ -29,6 +29,9 @@ function renderStatus(data) {
     el("heap").textContent = data.free_heap !== undefined
         ? `${Math.round(data.free_heap / 1024)} KB`
         : "--";
+
+    // 未连接时显示 Wi-Fi 配置表单（AP 配网模式下用户在此提交凭据）
+    el("wifi-config").hidden = !!data.wifi_connected;
 }
 
 function renderGnss(data) {
@@ -46,6 +49,31 @@ function setOnline(online) {
     const badge = el("conn-state");
     badge.className = `badge ${online ? "online" : "offline"}`;
     badge.textContent = online ? "已连接" : "断开";
+}
+
+async function saveWifi() {
+    const ssid = el("ssid").value.trim();
+    const password = el("password").value;
+    const msg = el("wifi-msg");
+
+    if (!ssid) {
+        msg.textContent = "请输入 Wi-Fi 名称";
+        return;
+    }
+
+    msg.textContent = "保存中...";
+    try {
+        const res = await fetch("/api/wifi", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ssid, password }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        msg.textContent = "已保存，正在连接...";
+    } catch (e) {
+        msg.textContent = "保存失败: " + e.message;
+        console.error("saveWifi failed:", e.message);
+    }
 }
 
 async function refresh() {

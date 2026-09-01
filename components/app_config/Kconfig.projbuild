@@ -26,6 +26,12 @@ menu "Application Configuration"
         help
             Number of STA reconnect attempts before giving up (and falling back to AP).
 
+    config APP_AP_SSID
+        string "AP provisioning SSID"
+        default "ESP32-GNSS-Setup"
+        help
+            SSID broadcast in AP mode when no credentials are available.
+
     config APP_WEB_SERVER_PORT
         int "HTTP server port"
         range 1 65535

@@ -91,10 +91,50 @@ static esp_err_t status_get_handler(httpd_req_t *req)
     cJSON_AddNumberToObject(root, "uptime", sys_ok ? (double)sys.uptime_s : 0);
     cJSON_AddNumberToObject(root, "free_heap", sys_ok ? (double)sys.free_heap : 0);
     cJSON_AddBoolToObject(root, "wifi_connected", wifi_ok && wifi.connected);
+    cJSON_AddBoolToObject(root, "ap_mode", wifi_ok && wifi.ap_mode);
     cJSON_AddNumberToObject(root, "wifi_rssi", wifi_ok && wifi.connected ? (double)wifi.rssi : 0);
     cJSON_AddStringToObject(root, "ip", wifi_ok ? wifi.ip : "");
 
     return web_send_json(req, root);
+}
+
+/** @brief POST /api/wifi —— 接收 {ssid, password}，保存凭据并切回 STA 重连。 */
+static esp_err_t wifi_post_handler(httpd_req_t *req)
+{
+    /* SSID(<=32) + password(<=64) + JSON 包装，256 字节足够 */
+    char buf[256] = {0};
+    int received = httpd_req_recv(req, buf, sizeof(buf) - 1);
+    if (received <= 0) {
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "empty body");
+    }
+    buf[received] = '\0';
+
+    cJSON *root = cJSON_Parse(buf);
+    if (root == NULL) {
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid json");
+    }
+
+    const cJSON *ssid = cJSON_GetObjectItem(root, "ssid");
+    const cJSON *password = cJSON_GetObjectItem(root, "password");
+    if (!cJSON_IsString(ssid) || !cJSON_IsString(password)) {
+        cJSON_Delete(root);
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "ssid/password required");
+    }
+
+    esp_err_t err = wifi_manager_apply_credentials(ssid->valuestring, password->valuestring);
+    cJSON_Delete(root);
+
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "apply credentials failed: %s", esp_err_to_name(err));
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "apply failed");
+    }
+
+    cJSON *resp = cJSON_CreateObject();
+    if (resp == NULL) {
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "oom");
+    }
+    cJSON_AddBoolToObject(resp, "ok", true);
+    return web_send_json(req, resp);
 }
 
 /** @brief 把 gnss_data_t 序列化为 JSON 子对象。 */
@@ -188,8 +228,8 @@ esp_err_t web_server_start(void)
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = WEB_SERVER_PORT;
-    /* 前端页面 + 静态资源 + 3 个 API，共 6 个路由 */
-    config.max_uri_handlers = 8;
+    /* 3 静态 + 3 GET API + 1 POST API，共 7 个路由，留余量 */
+    config.max_uri_handlers = 12;
 
     esp_err_t err = httpd_start(&s_server, &config);
     if (err != ESP_OK) {
@@ -216,6 +256,9 @@ esp_err_t web_server_start(void)
     static const httpd_uri_t device_uri = {
         .uri = "/api/device", .method = HTTP_GET, .handler = device_get_handler,
     };
+    static const httpd_uri_t wifi_uri = {
+        .uri = "/api/wifi", .method = HTTP_POST, .handler = wifi_post_handler,
+    };
 
     ESP_ERROR_CHECK(httpd_register_uri_handler(s_server, &index_uri));
     ESP_ERROR_CHECK(httpd_register_uri_handler(s_server, &style_uri));
@@ -223,8 +266,9 @@ esp_err_t web_server_start(void)
     ESP_ERROR_CHECK(httpd_register_uri_handler(s_server, &status_uri));
     ESP_ERROR_CHECK(httpd_register_uri_handler(s_server, &gnss_uri));
     ESP_ERROR_CHECK(httpd_register_uri_handler(s_server, &device_uri));
+    ESP_ERROR_CHECK(httpd_register_uri_handler(s_server, &wifi_uri));
 
-    ESP_LOGI(TAG, "http server on port %d: / /style.css /app.js /api/status /api/gnss /api/device",
+    ESP_LOGI(TAG, "http server on port %d: / /style.css /app.js /api/status /api/gnss /api/device /api/wifi",
              WEB_SERVER_PORT);
     return ESP_OK;
 }

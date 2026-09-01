@@ -21,6 +21,7 @@ GNSS（Phase 1+2）与 Wi-Fi STA（Phase 3）已实现，其余模块仍是占�
 | 5 | REST API `/api/status`、`/api/gnss` | 已实现（含 `/api/device` 汇总），待上板验证 |
 | 6 | Web Dashboard | 已实现（前端三件套嵌入固件 + `/` 根路由），待上板验证 |
 | 7 | NVS 存储 Wi-Fi 凭据 | 已实现（因 Wi-Fi 依赖 NVS 提前完成） |
+| 8 | AP 配网 | 已实现（无凭据/重试超限回退 AP，网页提交凭据），待上板验证 |
 | 8 | AP 配网 | 未实现 |
 | 9 | 网络可靠性 / 看门狗 | 未实现 |
 

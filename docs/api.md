@@ -25,6 +25,7 @@
 | `wifi_connected` | bool | `wifi_manager` | 是否已连上 AP |
 | `wifi_rssi` | int | `wifi_manager` | 信号强度 dBm |
 | `ip` | string | `wifi_manager` | IPv4 地址 |
+| `ap_mode` | bool | `wifi_manager` | 是否处于 AP 配网模式 |
 
 ## GET /api/gnss
 
@@ -70,9 +71,32 @@
 
 返回 Web Dashboard（`web/index.html`），Phase 6 接入。
 
+## POST /api/wifi
+
+AP 配网：接收新凭据，保存到 NVS 并切回 STA 重连（Phase 8）。
+
+请求体：
+
+```json
+{ "ssid": "MyWiFi", "password": "secret" }
+```
+
+成功响应：
+
+```json
+{ "ok": true }
+```
+
+| 状态码 | 说明 |
+|---|---|
+| 200 | 凭据已保存，正在重连 |
+| 400 | 请求体为空 / JSON 非法 / 缺少 ssid 或 password |
+| 500 | 保存或应用凭据失败 |
+
 ## 测试
 
 ```bash
 curl http://<esp32-ip>/api/status
 curl http://<esp32-ip>/api/gnss
+curl -X POST http://<esp32-ip>/api/wifi -H "Content-Type: application/json" -d '{"ssid":"MyWiFi","password":"secret"}'
 ```

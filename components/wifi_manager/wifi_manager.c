@@ -1,10 +1,11 @@
 /**
  * @file wifi_manager.c
- * @brief Wi-Fi STA 连接与自动重连。
+ * @brief Wi-Fi STA 连接、自动重连与 AP 配网。
  *
- * 凭据来源：优先 NVS（storage 模块），读不到回退到编译期默认值（menuconfig 配置）。
- * 断线处理：按框架文档 §15，记录日志 -> 等待 -> 重连，不重启整机。
- * 重试超过 WIFI_RETRY_MAX 后停止主动重连（Phase 8 转 AP 配网）。
+ * 凭据来源：优先 NVS（storage 模块），读不到回退到编译期默认值。
+ * 无凭据、或 STA 重试超过 WIFI_RETRY_MAX 时，回退到 AP 配网模式，
+ * 广播 APP_AP_SSID 热点，由网页提交凭据后切回 STA。
+ * 断线处理按框架文档 §15：记录日志 -> 等待 -> 重连，不重启整机。
  */
 
 #include "wifi_manager.h"
@@ -19,6 +20,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
+#include "freertos/task.h"
 #include "storage.h"
 
 static const char *TAG = "WIFI";
@@ -28,17 +30,21 @@ static const char *TAG = "WIFI";
 #define WIFI_PASSWORD_BUF_LEN STORAGE_PASSWORD_MAX_LEN
 
 /** 已拿到 IP 的事件位，供 wifi_manager_start() 同步等待 */
-#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_CONNECTED_BIT    BIT0
+/** 请求回退到 AP 配网的事件位，由 wifi_control_task 消费 */
+#define WIFI_FALLBACK_AP_BIT  BIT1
 
 static wifi_status_t s_status;
 static SemaphoreHandle_t s_status_mutex;
 static EventGroupHandle_t s_wifi_events;
 static int s_retry_count;
+static bool s_wifi_started;
 
-/** @brief STA netif 句柄，断线重连时不再重复创建。 */
+/** @brief STA / AP netif 句柄，重复调用时不再创建。 */
 static esp_netif_t *s_sta_netif;
+static esp_netif_t *s_ap_netif;
 
-/** @brief 在锁保护下更新状态。 */
+/** @brief 在锁保护下更新连接状态。 */
 static void wifi_set_status(bool connected, int8_t rssi, const char *ip)
 {
     if (xSemaphoreTake(s_status_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
@@ -52,6 +58,35 @@ static void wifi_set_status(bool connected, int8_t rssi, const char *ip)
         s_status.ip[0] = '\0';
     }
     xSemaphoreGive(s_status_mutex);
+}
+
+/** @brief 在锁保护下更新 AP 模式标志。 */
+static void wifi_set_ap_mode(bool ap)
+{
+    if (xSemaphoreTake(s_status_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+        return;
+    }
+    s_status.ap_mode = ap;
+    xSemaphoreGive(s_status_mutex);
+}
+
+/**
+ * @brief 控制任务：消费回退请求，在普通任务上下文中完成 STA -> AP 的切换。
+ *
+ * esp_wifi_stop() 不适合在 WIFI_EVENT 回调里调用，这里用事件位把动作
+ * 挪出事件处理上下文。
+ */
+static void wifi_control_task(void *arg)
+{
+    (void)arg;
+
+    while (true) {
+        EventBits_t bits = xEventGroupWaitBits(s_wifi_events, WIFI_FALLBACK_AP_BIT,
+                                               pdTRUE, pdFALSE, portMAX_DELAY);
+        if (bits & WIFI_FALLBACK_AP_BIT) {
+            wifi_manager_start_ap();
+        }
+    }
 }
 
 /** @brief 事件回调：处理 STA 生命周期与 IP 事件。 */
@@ -77,7 +112,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                 ESP_LOGW(TAG, "disconnected, retry %d/%d", s_retry_count, WIFI_RETRY_MAX);
                 esp_wifi_connect();
             } else {
-                ESP_LOGE(TAG, "retry limit reached, giving up (AP provisioning in Phase 8)");
+                ESP_LOGE(TAG, "retry limit reached, switching to AP provisioning");
+                xEventGroupSetBits(s_wifi_events, WIFI_FALLBACK_AP_BIT);
             }
             break;
         }
@@ -95,7 +131,6 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
 
         s_retry_count = 0;
 
-        /* RSSI 此时已可查询 */
         wifi_ap_record_t ap;
         int8_t rssi = 0;
         if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
@@ -103,6 +138,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         }
 
         wifi_set_status(true, rssi, ip_str);
+        wifi_set_ap_mode(false);
         if (s_wifi_events != NULL) {
             xEventGroupSetBits(s_wifi_events, WIFI_CONNECTED_BIT);
         }
@@ -139,7 +175,13 @@ esp_err_t wifi_manager_init(void)
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
 
-    ESP_LOGI(TAG, "wifi driver initialized in sta mode");
+    BaseType_t ok = xTaskCreate(wifi_control_task, "wifi_ctrl", 3072, NULL, 5, NULL);
+    if (ok != pdPASS) {
+        ESP_LOGE(TAG, "failed to create wifi_control_task");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "wifi driver initialized (sta + ap fallback)");
     return ESP_OK;
 }
 
@@ -153,21 +195,16 @@ esp_err_t wifi_manager_start(void)
     /* 凭据：NVS 优先，回退编译期默认值 */
     char ssid[WIFI_SSID_BUF_LEN] = {0};
     char password[WIFI_PASSWORD_BUF_LEN] = {0};
-    bool from_nvs = false;
 
-    if (storage_get_wifi_credentials(ssid, sizeof(ssid), password, sizeof(password))
-            == ESP_OK && ssid[0] != '\0') {
-        from_nvs = true;
-    } else {
+    if (!(storage_get_wifi_credentials(ssid, sizeof(ssid), password, sizeof(password))
+            == ESP_OK && ssid[0] != '\0')) {
         snprintf(ssid, sizeof(ssid), "%s", APP_WIFI_SSID);
         snprintf(password, sizeof(password), "%s", APP_WIFI_PASSWORD);
     }
 
     if (ssid[0] == '\0') {
-        ESP_LOGW(TAG, "no wifi credentials (nvs %s, compile-time empty); "
-                 "sta not started, waiting for provisioning",
-                 from_nvs ? "set" : "unset");
-        return ESP_ERR_INVALID_STATE;
+        ESP_LOGI(TAG, "no wifi credentials, entering AP provisioning");
+        return wifi_manager_start_ap();
     }
 
     wifi_config_t wifi_cfg = {0};
@@ -180,9 +217,10 @@ esp_err_t wifi_manager_start(void)
 
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg));
     ESP_ERROR_CHECK(esp_wifi_start());
+    s_wifi_started = true;
+    wifi_set_ap_mode(false);
 
-    ESP_LOGI(TAG, "connecting to \"%s\" (credentials from %s)",
-             ssid, from_nvs ? "nvs" : "compile-time default");
+    ESP_LOGI(TAG, "connecting to \"%s\"", ssid);
 
     /* 同步等第一个 IP（断线重连由事件回调异步处理） */
     EventBits_t bits = xEventGroupWaitBits(s_wifi_events, WIFI_CONNECTED_BIT,
@@ -193,6 +231,76 @@ esp_err_t wifi_manager_start(void)
 
     ESP_LOGW(TAG, "no ip within 15 s, continuing in background");
     return ESP_ERR_TIMEOUT;
+}
+
+esp_err_t wifi_manager_start_ap(void)
+{
+    if (s_ap_netif == NULL) {
+        s_ap_netif = esp_netif_create_default_wifi_ap();
+    }
+
+    if (s_wifi_started) {
+        esp_wifi_stop();
+        s_wifi_started = false;
+    }
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+
+    wifi_config_t ap_cfg = {0};
+    strlcpy((char *)ap_cfg.ap.ssid, APP_AP_SSID, sizeof(ap_cfg.ap.ssid));
+    ap_cfg.ap.ssid_len = strlen(APP_AP_SSID);
+    ap_cfg.ap.max_connection = 4;
+    ap_cfg.ap.authmode = WIFI_AUTH_OPEN;
+
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_cfg));
+    ESP_ERROR_CHECK(esp_wifi_start());
+    s_wifi_started = true;
+
+    s_retry_count = 0;
+    wifi_set_ap_mode(true);
+    wifi_set_status(false, 0, "192.168.4.1");
+
+    ESP_LOGI(TAG, "ap mode: connect to \"%s\", then open http://192.168.4.1/",
+             APP_AP_SSID);
+    return ESP_OK;
+}
+
+esp_err_t wifi_manager_apply_credentials(const char *ssid, const char *password)
+{
+    if (ssid == NULL || password == NULL || ssid[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /* 先落盘，再切换 */
+    esp_err_t err = storage_set_wifi_credentials(ssid, password);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "failed to save credentials: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    if (s_wifi_started) {
+        esp_wifi_stop();
+        s_wifi_started = false;
+    }
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+
+    wifi_config_t sta_cfg = {0};
+    strlcpy((char *)sta_cfg.sta.ssid, ssid, sizeof(sta_cfg.sta.ssid));
+    strlcpy((char *)sta_cfg.sta.password, password, sizeof(sta_cfg.sta.password));
+    sta_cfg.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+    sta_cfg.sta.pmf_cfg.capable = true;
+    sta_cfg.sta.pmf_cfg.required = false;
+
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_cfg));
+    ESP_ERROR_CHECK(esp_wifi_start());
+    s_wifi_started = true;
+
+    s_retry_count = 0;
+    wifi_set_ap_mode(false);
+
+    ESP_LOGI(TAG, "credentials saved, reconnecting to \"%s\"", ssid);
+    return ESP_OK;
 }
 
 esp_err_t wifi_manager_get_status(wifi_status_t *out)

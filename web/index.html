@@ -40,6 +40,17 @@
         </table>
     </section>
 
+    <section class="card" id="wifi-config" hidden>
+        <h2>Wi-Fi 设置</h2>
+        <p class="hint">当前未连接网络，输入 Wi-Fi 名称和密码保存后自动连接。</p>
+        <div class="form-row">
+            <input id="ssid" type="text" placeholder="Wi-Fi 名称 (SSID)" autocomplete="off">
+            <input id="password" type="password" placeholder="密码">
+            <button id="save-wifi" onclick="saveWifi()">保存并连接</button>
+        </div>
+        <div id="wifi-msg" class="hint"></div>
+    </section>
+
     <footer>每 1 秒轮询 /api/status 与 /api/gnss</footer>
 
     <script src="app.js"></script>

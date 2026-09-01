@@ -37,12 +37,18 @@ extern "C" {
 #define CONFIG_APP_WIFI_RETRY_MAX 10
 #endif
 
+#ifndef CONFIG_APP_AP_SSID
+#define CONFIG_APP_AP_SSID "ESP32-GNSS-Setup"
+#endif
+
 /** 编译期默认 SSID，运行期以 NVS 中保存的值优先 */
 #define APP_WIFI_SSID     CONFIG_APP_WIFI_SSID
 /** 编译期默认密码，运行期以 NVS 中保存的值优先 */
 #define APP_WIFI_PASSWORD CONFIG_APP_WIFI_PASSWORD
 /** STA 最大重试次数，超过后转 AP 配网 */
 #define WIFI_RETRY_MAX    CONFIG_APP_WIFI_RETRY_MAX
+/** 配网热点 SSID（AP 模式） */
+#define APP_AP_SSID       CONFIG_APP_AP_SSID
 
 /* ------------------------------------------------------------ HTTP 服务 --- */
 

@@ -1,9 +1,9 @@
 /**
  * @file wifi_manager.h
- * @brief Wi-Fi STA 连接与重连管理。
+ * @brief Wi-Fi STA 连接、自动重连与 AP 配网。
  *
- * 第一版只做 STA：连接路由器并在断线后自动重连。
- * 第二版（Phase 8）在此基础上加 AP 配网。
+ * STA 为主模式；无凭据或重试超限时回退到 AP 模式（Phase 8 配网），
+ * 用户通过网页提交凭据后切回 STA。
  */
 
 #pragma once
@@ -22,6 +22,7 @@ typedef struct {
     bool connected;   /**< 是否已连上 AP 并拿到 IP */
     int8_t rssi;      /**< 信号强度 dBm，未连接时为 0 */
     char ip[16];      /**< 点分十进制 IPv4，如 "192.168.1.105" */
+    bool ap_mode;     /**< 是否处于 AP 配网模式 */
 } wifi_status_t;
 
 /**
@@ -31,10 +32,25 @@ typedef struct {
 esp_err_t wifi_manager_init(void);
 
 /**
- * @brief 启动 STA 连接流程。
- * @return ESP_OK 成功。
+ * @brief 启动 STA 连接流程；无凭据时自动转入 AP 配网。
+ * @return ESP_OK 成功（已连接或已进入 AP 模式）。
  */
 esp_err_t wifi_manager_start(void);
+
+/**
+ * @brief 切换到 AP 配网模式，广播 APP_AP_SSID 热点。
+ * @return ESP_OK 成功。
+ */
+esp_err_t wifi_manager_start_ap(void);
+
+/**
+ * @brief 保存新凭据到 NVS 并切回 STA 重新连接。
+ *
+ * @param ssid     新的 Wi-Fi SSID，不可为 NULL。
+ * @param password 新的 Wi-Fi 密码，不可为 NULL。
+ * @return ESP_OK 成功。
+ */
+esp_err_t wifi_manager_apply_credentials(const char *ssid, const char *password);
 
 /**
  * @brief 获取当前 Wi-Fi 状态快照。
