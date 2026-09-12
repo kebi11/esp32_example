@@ -1,80 +1,81 @@
-# ESP32-S3 GNSS 网络定位终端
+# ESP32-S3 GNSS Network Positioning Terminal
 
-基于 ESP-IDF 5.x 的工程骨架。核心链路：
+ESP-IDF 5.x firmware that reads a GNSS module over UART, connects over Wi-Fi, and serves a live location dashboard in the browser.
+
+[Chinese README](README.zh.md)
 
 ```text
 GNSS → UART → ESP32-S3 → Wi-Fi → HTTP → Browser
 ```
 
-## 当前状态
+## Status
 
-目录结构、CMake 组织、Kconfig 配置项、模块 API 边界已就位。
-GNSS（Phase 1+2）与 Wi-Fi STA（Phase 3）已实现，其余模块仍是占位 stub。
+Project layout, CMake, Kconfig, and module APIs are in place.
+GNSS (Phase 1–2) and Wi-Fi STA (Phase 3) are implemented. Later phases are implemented in firmware but still need more on-device verification where noted.
 
-| Phase | 内容 | 状态 |
+| Phase | Scope | Status |
 |---|---|---|
-| 0 | 工程骨架 / Hello World 日志 | 已完成 |
-| 1 | GNSS UART 原始数据 | 已完成（实测 115200 波特率，串口输出 `$GNRMC`） |
-| 2 | NMEA Parser（GGA / RMC） | 已实现（RMC 解析 + mutex 快照 + 每秒摘要日志），待上板验证 |
-| 3 | Wi-Fi STA | 已完成（实测连上手机热点，RSSI -17，IP） |
-| 4 | HTTP Server | 已实现（esp_http_server，端口 80），待上板验证 |
-| 5 | REST API `/api/status`、`/api/gnss` | 已实现（含 `/api/device` 汇总），待上板验证 |
-| 6 | Web Dashboard | 已实现（前端三件套嵌入固件 + `/` 根路由），待上板验证 |
-| 7 | NVS 存储 Wi-Fi 凭据 | 已实现（因 Wi-Fi 依赖 NVS 提前完成） |
-| 8 | AP 配网 | 已实现（无凭据/重试超限回退 AP，网页提交凭据） |
-| 9 | 网络可靠性 / 看门狗 | 已实现（UART 异常恢复 + task WDT + 系统监控任务） |
-| 10 | 扩展 | 部分：SSE 实时推送、地图、轨迹存储、PWA 已实现（MQTT/OTA/HTTPS/microSD 需外部资源，未做） |
+| 0 | Project skeleton / Hello World logs | Done |
+| 1 | GNSS UART raw data | Done (tested at 115200 baud, serial shows `$GNRMC`) |
+| 2 | NMEA parser (GGA / RMC) | Implemented (RMC parse + mutex snapshot + 1 Hz summary log), board verification pending |
+| 3 | Wi-Fi STA | Done (tested on phone hotspot, RSSI -17, got an IP) |
+| 4 | HTTP server | Implemented (`esp_http_server`, port 80), board verification pending |
+| 5 | REST API `/api/status`, `/api/gnss` | Implemented (plus `/api/device` summary), board verification pending |
+| 6 | Web dashboard | Implemented (frontend embedded in firmware, `/` route), board verification pending |
+| 7 | NVS Wi-Fi credentials | Implemented (done early because Wi-Fi depends on NVS) |
+| 8 | AP provisioning | Implemented (falls back to AP if no credentials / retry limit; submit SSID/password from the page) |
+| 9 | Reliability / watchdog | Implemented (UART recovery + task WDT + system monitor task) |
+| 10 | Extras | Partial: SSE live push, map, track storage, PWA done. MQTT / OTA / HTTPS / microSD need extra hardware or infra |
 
-## 目录结构
+## Layout
 
 ```text
 ├── CMakeLists.txt
 ├── sdkconfig.defaults
 ├── main/
-│   └── app_main.c              只负责启动顺序
+│   └── app_main.c              boot order only
 ├── components/
-│   ├── app_config/             项目级配置宏（Kconfig 映射）
-│   ├── wifi_manager/           STA 连接与重连
-│   ├── gnss/                   UART 接收 + NMEA 解析
+│   ├── app_config/             project Kconfig macros
+│   ├── wifi_manager/           STA connect + reconnect
+│   ├── gnss/                   UART RX + NMEA parse
 │   ├── web_server/             esp_http_server + REST API
-│   ├── storage/                NVS 读写
-│   └── system_monitor/         uptime / heap / RSSI 统计
-├── web/                        前端静态文件（Phase 6 嵌入）
+│   ├── storage/                NVS read/write
+│   └── system_monitor/         uptime / heap / RSSI
+├── web/                        frontend (embedded in Phase 6)
 └── docs/                       architecture / api / hardware / development
 ```
 
-## 配置
+## Configure
 
 ```bash
 idf.py set-target esp32s3
 idf.py menuconfig
 ```
 
-主要配置项：
-
-| 配置 | 默认 | 说明 |
+| Option | Default | Notes |
 |---|---|---|
-| `APP_DEVICE_NAME` | `esp32s3-gnss-01` | 设备名 |
-| `APP_WIFI_SSID` / `APP_WIFI_PASSWORD` | 空 | 编译期默认 Wi-Fi 凭据，运行期以 NVS 优先 |
-| `APP_WIFI_RETRY_MAX` | 10 | STA 最大重试次数 |
-| `APP_WEB_SERVER_PORT` | 80 | HTTP 端口 |
-| `GNSS_UART_NUM` | 1 | UART 端口号 |
-| `GNSS_UART_BAUDRATE` | 115200 | 波特率（本模块实测值，见 docs/hardware.md） |
+| `APP_DEVICE_NAME` | `esp32s3-gnss-01` | Device name |
+| `APP_WIFI_SSID` / `APP_WIFI_PASSWORD` | empty | Compile-time defaults; NVS wins at runtime |
+| `APP_WIFI_RETRY_MAX` | 10 | STA retry limit |
+| `APP_WEB_SERVER_PORT` | 80 | HTTP port |
+| `GNSS_UART_NUM` | 1 | UART port |
+| `GNSS_UART_BAUDRATE` | 115200 | Measured on this module; see `docs/hardware.md` |
 | `GNSS_UART_RX_GPIO` | 18 | ESP32 RX ← GNSS TXD |
 | `GNSS_UART_TX_GPIO` | 17 | ESP32 TX → GNSS RXD |
 
-## 构建
+## Build
 
 ```bash
 idf.py build
 idf.py -p COMx flash monitor
 ```
 
-退出 Monitor：`Ctrl + ]`
+Leave the monitor with `Ctrl + ]`.
 
-## 文档
+## Docs
 
-- [架构说明](docs/architecture.md)
+- [Architecture](docs/architecture.md)
 - [REST API](docs/api.md)
-- [硬件接线](docs/hardware.md)
-- [开发流程](docs/development.md)
+- [Hardware wiring](docs/hardware.md)
+- [Development notes](docs/development.md)
+- [Chinese README](README.zh.md)
